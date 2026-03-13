@@ -1,4 +1,33 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Clear localStorage values on page load
+    localStorage.removeItem("slots");
+    localStorage.removeItem("videoSource");
+
+    // Solid Reset
+    fetch('/reset', { method: 'POST' }).then(() => {
+        const img = document.getElementById('video-stream');
+        if (img) {
+            img.style.display = 'none';
+            img.src = '';
+        }
+        const noVideoText = document.getElementById('no-video-text');
+        if (noVideoText) {
+            noVideoText.style.display = 'block';
+        }
+        const overlay = document.getElementById('camera-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+        const sourceLabel = document.getElementById('camera-source-text');
+        if (sourceLabel) {
+            sourceLabel.textContent = 'Source: Not Active';
+        }
+        const videoFileName = document.getElementById('video-file-name');
+        if (videoFileName) {
+            videoFileName.textContent = 'No file chosen';
+        }
+    }).catch(err => console.error(err));
+
     // Theme Toggle Logic
     const themeToggleBtn = document.getElementById('theme-toggle');
     const currentTheme = localStorage.getItem('theme') || 'light';
@@ -48,9 +77,42 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/status');
             const data = await response.json();
-            document.getElementById('available-count').textContent = data.available;
-            document.getElementById('occupied-count').textContent = data.occupied;
-            document.getElementById('total-count').textContent = data.total;
+            
+            const available = data.available || 0;
+            const occupied = data.occupied || 0;
+            const total = data.total || 0;
+            
+            document.getElementById('available-count').textContent = available;
+            document.getElementById('occupied-count').textContent = occupied;
+            document.getElementById('total-count').textContent = total;
+            
+            // Calculate Occupancy Percentage
+            let occupancyPercent = 0;
+            if (total > 0) {
+                occupancyPercent = Math.round((occupied / total) * 100);
+            }
+            document.getElementById('occupancy-percent').textContent = occupancyPercent + '%';
+
+            // Update Parking Status Banner
+            const statusTextEl = document.getElementById('status-text');
+            const percentFree = 100 - occupancyPercent;
+            
+            // Clear existing status classes
+            statusTextEl.classList.remove('status-available', 'status-moderate', 'status-full');
+
+            if (total === 0) {
+                statusTextEl.textContent = 'No video source active. Configure a source to begin.';
+            } else if (percentFree > 50) {
+                statusTextEl.textContent = 'Parking Available';
+                statusTextEl.classList.add('status-available');
+            } else if (percentFree >= 20 && percentFree <= 50) {
+                statusTextEl.textContent = 'Moderate Occupancy';
+                statusTextEl.classList.add('status-moderate');
+            } else {
+                statusTextEl.textContent = 'Almost Full';
+                statusTextEl.classList.add('status-full');
+            }
+            
         } catch (error) {
             console.error('Error fetching status:', error);
         }
@@ -58,6 +120,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setInterval(updateStatus, 1000);
     updateStatus();
+
+    // Live Camera Time Overlay
+    const updateCameraTime = () => {
+        const timeEl = document.getElementById('camera-time');
+        if (timeEl) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+            timeEl.textContent = `LIVE • ${timeString}`;
+        }
+    };
+    setInterval(updateCameraTime, 1000);
+    updateCameraTime();
 
     // Source Configuration
     document.getElementById('update-source-btn').addEventListener('click', async () => {
@@ -77,6 +151,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 img.src = '/video_feed?' + new Date().getTime();
                 img.style.display = 'block';
                 document.getElementById('no-video-text').style.display = 'none';
+                
+                // Show floating overlay
+                const overlay = document.getElementById('camera-overlay');
+                if (overlay) overlay.style.display = 'flex';
+                
+                // Update Source Text
+                const sourceLabel = document.getElementById('camera-source-text');
+                if (sourceLabel) sourceLabel.textContent = `Source: ${url}`;
             }
         } catch (error) {
             alert('Error updating source');
@@ -106,6 +188,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 img.src = '/video_feed?' + new Date().getTime();
                 img.style.display = 'block';
                 document.getElementById('no-video-text').style.display = 'none';
+                
+                // Show floating overlay
+                const overlay = document.getElementById('camera-overlay');
+                if (overlay) overlay.style.display = 'flex';
+                
+                // Update Source Text
+                const sourceLabel = document.getElementById('camera-source-text');
+                if (sourceLabel) sourceLabel.textContent = `Source: Local Upload (${fileInput.files[0].name})`;
+
                 videoFileName.textContent = 'No file chosen';
                 fileInput.value = '';
             } else {
@@ -149,9 +240,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('picker-modal');
     const openBtn = document.getElementById('open-picker-btn');
     const closeBtn = document.getElementById('close-picker-btn');
+    const maximizeBtn = document.getElementById('maximize-modal-btn');
     const canvas = document.getElementById('picker-canvas');
     const ctx = canvas.getContext('2d');
     
+    // Maximize logic
+    if (maximizeBtn) {
+        maximizeBtn.addEventListener('click', () => {
+            const modalContent = document.querySelector('.modal-content');
+            modalContent.classList.toggle('maximized');
+            if (modalContent.classList.contains('maximized')) {
+                // shrink icon
+                maximizeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>';
+            } else {
+                // expand icon
+                maximizeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>';
+            }
+        });
+    }
+
     let positions = [];
     let lastDeletedPositions = []; // for undo
     let boxWidth = 40;
@@ -165,6 +272,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // For moving existing boxes
     let movingBoxIndex = -1;
     let movingBoxOffset = null;
+    let hoverBoxIndex = -1;
+    let selectedBoxIndex = -1;
+    
+    // For live preview
+    let currentMouseX = null;
+    let currentMouseY = null;
+    let isSelecting = false;
 
     const decodePos = (pos) => {
         let px, py, pw, ph, pangle = 0;
@@ -189,6 +303,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return { x: px, y: py, w: pw, h: ph, angle: pangle };
     };
 
+    const isPointInsideSlot = (x, y, pos) => {
+        const decoded = decodePos(pos);
+        const dx = x - (decoded.x + decoded.w/2);
+        const dy = y - (decoded.y + decoded.h/2);
+        const rad = -decoded.angle * Math.PI / 180;
+        const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
+        const ry = dx * Math.sin(rad) + dy * Math.cos(rad);
+        return (rx > -decoded.w/2 && rx < decoded.w/2 && ry > -decoded.h/2 && ry < decoded.h/2);
+    };
+
     const loadPositions = async () => {
         const response = await fetch('/get_positions');
         const data = await response.json();
@@ -208,6 +332,33 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('empty-threshold-val').textContent = e.target.value;
     });
 
+    const angleInput = document.getElementById('box-angle');
+    const angleVal = document.getElementById('box-angle-val');
+    
+    document.getElementById('box-width').addEventListener('input', (e) => {
+        boxWidth = parseInt(e.target.value) || 40;
+        if (selectedBoxIndex !== -1 && selectedBoxIndex < positions.length) {
+            positions[selectedBoxIndex][2] = boxWidth;
+        }
+        redrawCanvas();
+    });
+
+    document.getElementById('box-height').addEventListener('input', (e) => {
+        boxHeight = parseInt(e.target.value) || 23;
+        if (selectedBoxIndex !== -1 && selectedBoxIndex < positions.length) {
+            positions[selectedBoxIndex][3] = boxHeight;
+        }
+        redrawCanvas();
+    });
+
+    angleInput.addEventListener('input', (e) => {
+        angleVal.textContent = e.target.value + '°';
+        if (selectedBoxIndex !== -1 && selectedBoxIndex < positions.length) {
+            positions[selectedBoxIndex][4] = parseFloat(e.target.value);
+        }
+        redrawCanvas();
+    });
+
     const redrawCanvas = () => {
         if (!backgroundImage.src) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -225,9 +376,55 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.save();
             ctx.translate(decoded.x + decoded.w/2, decoded.y + decoded.h/2);
             ctx.rotate(decoded.angle * Math.PI / 180);
+
+            if (idx === hoverBoxIndex && idx !== selectedBoxIndex) {
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 3;
+            } else if (idx === selectedBoxIndex) {
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 3;
+            } else {
+                ctx.strokeStyle = '#ff00ff';
+                ctx.lineWidth = 2;
+            }
+
             ctx.strokeRect(-decoded.w/2, -decoded.h/2, decoded.w, decoded.h);
+            
+            if (idx === hoverBoxIndex || idx === selectedBoxIndex) {
+               ctx.fillStyle = '#ffffff';
+               ctx.font = 'bold 14px Arial';
+               ctx.textAlign = 'center';
+               ctx.textBaseline = 'middle';
+               ctx.shadowColor = "rgba(0,0,0,0.8)";
+               ctx.shadowBlur = 4;
+               ctx.fillText('Slot #' + (idx + 1), 0, 0);
+               ctx.shadowBlur = 0;
+            }
+            
             ctx.restore();
         });
+        
+        // Draw live preview for the new box
+        if (currentMouseX !== null && currentMouseY !== null && hoverBoxIndex === -1 && !isDragging) {
+            const currentMode = document.getElementById('select-orientation').value;
+            if (currentMode !== 'draw') {
+                const currentAngle = parseFloat(document.getElementById('box-angle').value) || 0;
+                const currentOrient = parseInt(currentMode);
+                const ww = currentOrient === 0 ? boxWidth : boxHeight;
+                const hh = currentOrient === 0 ? boxHeight : boxWidth;
+                
+                ctx.save();
+                ctx.translate(currentMouseX + ww/2, currentMouseY + hh/2);
+                ctx.rotate(currentAngle * Math.PI / 180);
+                
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)'; // Cyan ghost
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(-ww/2, -hh/2, ww, hh);
+                
+                ctx.restore();
+            }
+        }
     };
 
     const initPicker = async () => {
@@ -259,17 +456,33 @@ document.addEventListener('DOMContentLoaded', () => {
         boxWidth = parseInt(document.getElementById('box-width').value) || boxWidth;
         boxHeight = parseInt(document.getElementById('box-height').value) || boxHeight;
 
+        isSelecting = false;
+        
+        let clickedBoxIndex = -1;
+        for (let i = positions.length - 1; i >= 0; i--) {
+            if (isPointInsideSlot(x, y, positions[i])) {
+                clickedBoxIndex = i;
+                break;
+            }
+        }
+
+        // Selection logic on left click
+        if (e.button === 0 && !e.ctrlKey) {
+            selectedBoxIndex = clickedBoxIndex;
+            if (selectedBoxIndex !== -1 && selectedBoxIndex < positions.length) {
+                const decoded = decodePos(positions[selectedBoxIndex]);
+                angleInput.value = decoded.angle;
+                angleVal.textContent = decoded.angle + '°';
+                document.getElementById('box-width').value = decoded.w;
+                document.getElementById('box-height').value = decoded.h;
+                isSelecting = true;
+            }
+            redrawCanvas();
+        }
+
         if (e.ctrlKey) {
             // Hit test to find a box to move
-            movingBoxIndex = positions.findIndex(pos => {
-                const decoded = decodePos(pos);
-                const dx = x - (decoded.x + decoded.w/2);
-                const dy = y - (decoded.y + decoded.h/2);
-                const rad = -decoded.angle * Math.PI / 180;
-                const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
-                const ry = dx * Math.sin(rad) + dy * Math.cos(rad);
-                return (rx > -decoded.w/2 && rx < decoded.w/2 && ry > -decoded.h/2 && ry < decoded.h/2);
-            });
+            movingBoxIndex = clickedBoxIndex;
             
             if (movingBoxIndex !== -1) {
                 const decoded = decodePos(positions[movingBoxIndex]);
@@ -285,14 +498,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     canvas.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
+        
+        currentMouseX = x;
+        currentMouseY = y;
 
+        if (!isDragging) {
+            let foundHover = -1;
+            // Iterate backwards to hover the top-most box
+            for (let i = positions.length - 1; i >= 0; i--) {
+                if (isPointInsideSlot(x, y, positions[i])) {
+                    foundHover = i;
+                    break;
+                }
+            }
+            hoverBoxIndex = foundHover;
+            redrawCanvas(); // Always redraw for the live preview to track mouse cursor
+            return;
+        }
+        
         if (movingBoxIndex !== -1) {
             redrawCanvas();
             const decoded = decodePos(positions[movingBoxIndex]);
@@ -306,6 +534,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.restore();
             return;
         }
+
+        if (isSelecting) return;
 
         const currentMode = document.getElementById('select-orientation').value;
         if (currentMode !== 'draw') return;
@@ -348,13 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let removedAny = false;
             let tempDeleted = [];
             const newPositions = positions.filter(pos => {
-                const decoded = decodePos(pos);
-                const dx = x - (decoded.x + decoded.w/2);
-                const dy = y - (decoded.y + decoded.h/2);
-                const rad = -decoded.angle * Math.PI / 180;
-                const rx = dx * Math.cos(rad) - dy * Math.sin(rad);
-                const ry = dx * Math.sin(rad) + dy * Math.cos(rad);
-                const intersects = (rx > -decoded.w/2 && rx < decoded.w/2 && ry > -decoded.h/2 && ry < decoded.h/2);
+                const intersects = isPointInsideSlot(x, y, pos);
                 
                 if (intersects) {
                     tempDeleted.push(pos);
@@ -367,7 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  lastDeletedPositions.push(...tempDeleted);
             }
             positions = newPositions;
-        } else {
+        } else if (!isSelecting) {
             const currentAngle = parseFloat(document.getElementById('box-angle').value) || 0;
             const currentMode = document.getElementById('select-orientation').value;
             if (currentMode === 'draw') {
@@ -406,6 +630,12 @@ document.addEventListener('DOMContentLoaded', () => {
         redrawCanvas();
     });
     
+    canvas.addEventListener('mouseleave', () => {
+        currentMouseX = null;
+        currentMouseY = null;
+        redrawCanvas();
+    });
+
     canvas.addEventListener('contextmenu', e => e.preventDefault());
 
     document.getElementById('btn-undo').addEventListener('click', () => {
@@ -443,8 +673,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('keydown', (e) => {
         if (!modal.classList.contains('active')) return;
+        
+        if (e.key === 'Escape') {
+            const modalContent = document.querySelector('.modal-content');
+            if (modalContent.classList.contains('maximized')) {
+                maximizeBtn.click();
+            } else {
+                closeBtn.click();
+            }
+            return;
+        }
+
         if (e.key === 'd' || e.key === 'D') {
             duplicateLastBox();
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+            if (selectedBoxIndex !== -1 && selectedBoxIndex < positions.length) {
+                lastDeletedPositions.push(positions[selectedBoxIndex]);
+                positions.splice(selectedBoxIndex, 1);
+                selectedBoxIndex = -1;
+                hoverBoxIndex = -1;
+                redrawCanvas();
+            }
         }
     });
 

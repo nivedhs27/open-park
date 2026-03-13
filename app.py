@@ -2,12 +2,13 @@ import cv2
 import pickle
 import os
 import threading
-from flask import Flask, render_template, Response, jsonify, request
+from flask import Flask, render_template, Response, jsonify, request, session, redirect, url_for
 import time
 import hashlib
 import numpy as np
 
 app = Flask(__name__)
+app.secret_key = "super_secret_openpark_key_for_prototype"
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 video_path = os.path.join(current_dir, 'input', 'parking.mp4')
@@ -200,10 +201,71 @@ def generate_frames():
 
 @app.route('/')
 def index():
+    if session.get("logged_in"):
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if username == 'admin' and password == 'admin123':
+            session['logged_in'] = True
+            return redirect(url_for('dashboard'))
+        else:
+            return render_template('login.html', error="Invalid username or password")
+    
+    # GET request
+    if session.get("logged_in"):
+        return redirect(url_for('dashboard'))
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
+@app.route('/dashboard')
+def dashboard():
+    if not session.get("logged_in"):
+        return redirect(url_for('login'))
+        
+    global current_video_source, latest_frame, park_positions, latest_status, width, height, empty, full
+    current_video_source = None
+    latest_frame = None
+    park_positions = []
+    latest_status = {
+        "total": 0,
+        "available": 0,
+        "occupied": 0
+    }
+    width, height = 40, 23
+    full = width * height
+    empty = 0.22
+
     return render_template('index.html')
+
+@app.route('/reset', methods=['POST'])
+def reset_state():
+    global current_video_source, latest_frame, park_positions, latest_status, width, height, empty, full
+    current_video_source = None
+    latest_frame = None
+    park_positions = []
+    latest_status = {
+        "total": 0,
+        "available": 0,
+        "occupied": 0
+    }
+    width, height = 40, 23
+    full = width * height
+    empty = 0.22
+    return jsonify({"status": "success"})
 
 @app.route('/video_feed')
 def video_feed():
+    if not session.get("logged_in"):
+        return Response("Unauthorized", status=401)
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/status')

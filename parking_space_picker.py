@@ -60,6 +60,8 @@ try:
 except Exception:
     pass
 
+angle = 0 # Default angle for standalone picker
+
 def save_settings():
     try:
         with open(settings_path, 'wb') as sf:
@@ -85,15 +87,19 @@ def mouse_events(event, x, y, flag, param):
     elif event == cv2.EVENT_LBUTTONUP:
         pt2_x, pt2_y = x, y
         parking_spaces = parking_line_counter()
+        
+        pw = width if current_orientation == 0 else height
+        ph = height if current_orientation == 0 else width
+        
         if parking_spaces == 0:
-            park_positions.append((x, y, current_orientation))
+            park_positions.append([x, y, pw, ph, angle])
         else:
             if current_orientation == 0:
                 for i in range(parking_spaces):
-                    park_positions.append((pt1_x, pt1_y + i * height, current_orientation))
+                    park_positions.append([pt1_x, pt1_y + i * height, pw, ph, angle])
             else:
                 for i in range(parking_spaces):
-                    park_positions.append((pt1_x + i * width, pt1_y, current_orientation))
+                    park_positions.append([pt1_x + i * width, pt1_y, pw, ph, angle])
 
     if event == cv2.EVENT_RBUTTONDOWN:
         drag_start_right = (x, y)
@@ -109,11 +115,32 @@ def mouse_events(event, x, y, flag, param):
         h = y2n - y1n
         if w <= 5 and h <= 5:
             for i, position in enumerate(list(park_positions)):
-                px, py = position[0], position[1]
-                orient = position[2] if len(position) > 2 else 0
-                w = width if orient == 0 else height
-                h = height if orient == 0 else width
-                if px < x < px + w and py < y < py + h:
+                p_angle = 0
+                if len(position) >= 5:
+                    px, py, pw, ph, p_angle = position[:5]
+                elif len(position) == 4:
+                    if position[2] <= 1 and position[3] <= 360:
+                        px, py = position[0], position[1]
+                        orient = position[2]
+                        pw = width if orient == 0 else height
+                        ph = height if orient == 0 else width
+                        p_angle = position[3]
+                    else:
+                        px, py, pw, ph = position
+                else:
+                    px, py = position[0], position[1]
+                    orient = position[2] if len(position) > 2 else 0
+                    pw = width if orient == 0 else height
+                    ph = height if orient == 0 else width
+
+                import math
+                dx = x - (px + pw/2)
+                dy = y - (py + ph/2)
+                rad = -p_angle * math.pi / 180
+                rx = dx * math.cos(rad) - dy * math.sin(rad)
+                ry = dx * math.sin(rad) + dy * math.cos(rad)
+                
+                if rx > -pw/2 and rx < pw/2 and ry > -ph/2 and ry < ph/2:
                     park_positions.pop(i)
                     break
         else:
@@ -142,11 +169,33 @@ while True:
         print(f"Error loading image: {e}")
         break
     for position in park_positions:
-        px, py = position[0], position[1]
-        orient = position[2] if len(position) > 2 else 0
-        w = width if orient == 0 else height
-        h = height if orient == 0 else width
-        cv2.rectangle(img, (px, py), (px + w, py + h), (255, 0, 255), 3)
+        p_angle = 0
+        if len(position) >= 5:
+            px, py, pw, ph, p_angle = position[:5]
+        elif len(position) == 4:
+            if position[2] <= 1 and position[3] <= 360:
+                px, py = position[0], position[1]
+                orient = position[2]
+                pw = width if orient == 0 else height
+                ph = height if orient == 0 else width
+                p_angle = position[3]
+            else:
+                px, py, pw, ph = position
+        else:
+            px, py = position[0], position[1]
+            orient = position[2] if len(position) > 2 else 0
+            pw = width if orient == 0 else height
+            ph = height if orient == 0 else width
+            
+        if p_angle == 0:
+            cv2.rectangle(img, (int(px), int(py)), (int(px + pw), int(py + ph)), (255, 0, 255), 3)
+        else:
+            import numpy as np
+            rect = ((px + pw/2, py + ph/2), (pw, ph), p_angle)
+            box = cv2.boxPoints(rect)
+            pts = np.int32(box)
+            cv2.polylines(img, [pts], True, (255, 0, 255), 3)
+            
     info_w, info_h = 220, 40
     cv2.rectangle(img, (0, 0), (info_w, info_h), (0, 0, 0), -1)
     info_text = f"Size: {width}x{height}px {'V' if current_orientation==1 else 'H'}"
