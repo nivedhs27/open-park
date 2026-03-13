@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Openpark</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>Openpark</h1>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <button class="icon-btn" id="theme-toggle" aria-label="Toggle Dark Mode">
+                    <!-- Sun Icon (shown in dark mode) -->
+                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    <!-- Moon Icon (shown in light mode) -->
+                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </button>
+                <div class="connection-status">
+                    Live
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <div class="stat-title">Available Spots</div>
+                    <div class="stat-value text-success" id="available-count">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Occupied Spots</div>
+                    <div class="stat-value text-danger" id="occupied-count">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Total Capacity</div>
+                    <div class="stat-value" id="total-count">--</div>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <div class="panel video-panel">
+                    <div class="panel-header">
+                        <h2>Live Feed</h2>
+                        <button class="btn btn-secondary" id="open-picker-btn">Configure Spots</button>
+                    </div>
+                    <div class="video-container">
+                        <img id="video-stream" src="" alt="No video source selected. Please configure a source." style="display: none;">
+                        <span id="no-video-text">No video source active. Configure a source to begin.</span>
+                    </div>
+                </div>
+
+                <div class="panel settings-panel">
+                    <div class="panel-header">
+                        <h2>Configuration</h2>
+                    </div>
+                    <div class="settings-content">
+                        <div class="form-group">
+                            <label for="stream-url">Camera Stream URL or Device ID (e.g., 0)</label>
+                            <input type="text" id="stream-url" placeholder="http://192.168.1.100:8080/video or 0">
+                            <button class="btn btn-primary" id="update-source-btn">Update Source</button>
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label>Or Upload a Video File (MP4, AVI)</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <label for="video-upload" class="btn btn-secondary custom-file-upload">Choose Video File</label>
+                                <input type="file" id="video-upload" accept="video/*" style="display: none;">
+                                <span id="video-file-name" class="file-name-display">No file chosen</span>
+                                <button class="btn btn-primary" id="upload-video-btn">Upload Video</button>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label>Import Existing Configuration (positions.pkl)</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <label for="positions-upload" class="btn btn-secondary custom-file-upload">Choose PKL File</label>
+                                <input type="file" id="positions-upload" accept=".pkl" style="display: none;">
+                                <span id="positions-file-name" class="file-name-display">No file chosen</span>
+                                <button class="btn btn-secondary" id="upload-positions-btn">Import Layout</button>
+                            </div>
+                        </div>
+                        <p class="help-text">Change the video source to any reachable IP camera stream, webcam, or video file. You can also upload a pre-existing positions configuration file for the active video.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Parking Spot Picker Modal -->
+    <div class="modal" id="picker-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configure Parking Spaces</h2>
+                <button class="close-btn" id="close-picker-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="picker-toolbar">
+                    <div class="tools-left">
+                        <button class="btn btn-secondary" id="btn-undo">Undo Delete</button>
+                        <button class="btn btn-secondary" id="btn-duplicate" title="Duplicate last box (Shortcut: D)">Duplicate Last</button>
+                        <button class="btn btn-secondary" id="btn-clear-all">Clear All</button>
+                    </div>
+                    <div class="tools-center" style="display: flex; align-items: center; gap: 1.5rem;">
+                        <div class="dimensions-group">
+                            <label>W:</label>
+                            <input type="number" id="box-width" class="dimension-input" value="40" min="5" style="width: 50px;">
+                            <label>H:</label>
+                            <input type="number" id="box-height" class="dimension-input" value="23" min="5" style="width: 50px;">
+                            <label>Angle:</label>
+                            <input type="number" id="box-angle" class="dimension-input" value="0" style="width: 50px;" title="Rotation in degrees">
+                            <label title="Spacing between duplicated boxes">Dup Space:</label>
+                            <input type="number" id="dup-spacing" class="dimension-input" value="5" style="width: 50px;">
+                        </div>
+                        <div class="sensitivity-group" style="display: flex; align-items: center; gap: 0.5rem;" title="Adjust this threshold if cars are showing as green, or empty spots are red.">
+                            <label>Sensitivity:</label>
+                            <input type="range" id="empty-threshold" min="0.05" max="0.5" step="0.01" value="0.22" style="width: 80px;">
+                            <span id="empty-threshold-val" style="font-size: 0.875rem; min-width: 32px;">0.22</span>
+                        </div>
+                    </div>
+                    <div class="tools-right">
+                        <span>Mode:</span>
+                        <select id="select-orientation" class="input-select">
+                            <option value="0">Standard Horizontal</option>
+                            <option value="1">Standard Vertical</option>
+                            <option value="draw">Custom Draw</option>
+                        </select>
+                        <button class="btn btn-primary" id="btn-save-positions">Save & Apply</button>
+                    </div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="picker-canvas"></canvas>
+                </div>
+                <div class="instructions">
+                    <p><strong>Controls:</strong> Left click to add a spot. Right click to delete. <strong>Hold Ctrl & Drag</strong> to move a box. <strong>Draw Mode:</strong> Click and drag to create a custom box. Press 'D' to duplicate your last box.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
