@@ -92,6 +92,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 occupancyPercent = Math.round((occupied / total) * 100);
             }
             document.getElementById('occupancy-percent').textContent = occupancyPercent + '%';
+            
+            const progressFill = document.getElementById('occupancy-progress');
+            if (progressFill) {
+                progressFill.style.width = occupancyPercent + '%';
+            }
 
             // Update Parking Status Banner
             const statusTextEl = document.getElementById('status-text');

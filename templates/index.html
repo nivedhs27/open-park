@@ -6,43 +6,10 @@
     <title>Openpark</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <body>
-    <!-- Neural Wave Animation -->
+    <!-- Neural Wave Animation (Now Cosmos Stars) -->
     <div class="neural-bg">
-        <div class="wave-lines-container">
-            <svg class="neural-waves" viewBox="0 0 2880 320" preserveAspectRatio="none">
-                <defs>
-                    <path id="path1" d="M0,200 Q360,280 720,200 T1440,200 T2160,200 T2880,200"></path>
-                    <path id="path2" d="M0,220 Q360,160 720,220 T1440,220 T2160,220 T2880,220"></path>
-                    <path id="path3" d="M0,180 Q360,280 720,180 T1440,180 T2160,180 T2880,180"></path>
-                    <path id="path4" d="M0,240 Q360,150 720,240 T1440,240 T2160,240 T2880,240"></path>
-                    <path id="path5" d="M0,190 Q360,240 720,190 T1440,190 T2160,190 T2880,190"></path>
-                    <path id="path6" d="M0,210 Q360,100 720,210 T1440,210 T2160,210 T2880,210"></path>
-                    <path id="path7" d="M0,250 Q360,320 720,250 T1440,250 T2160,250 T2880,250"></path>
-                    <path id="path8" d="M0,170 Q360,100 720,170 T1440,170 T2160,170 T2880,170"></path>
-                    <path id="path9" d="M0,230 Q360,290 720,230 T1440,230 T2160,230 T2880,230"></path>
-                    <path id="path10" d="M0,160 Q360,210 720,160 T1440,160 T2160,160 T2880,160"></path>
-                    <path id="path11" d="M0,260 Q360,180 720,260 T1440,260 T2160,260 T2880,260"></path>
-                    <path id="path12" d="M0,140 Q360,230 720,140 T1440,140 T2160,140 T2880,140"></path>
-                    <path id="path13" d="M0,150 Q360,260 720,150 T1440,150 T2160,150 T2880,150"></path>
-                    <path id="path14" d="M0,270 Q360,140 720,270 T1440,270 T2160,270 T2880,270"></path>
-                </defs>
-
-                <g class="line-svg line-1" opacity="0.30"><use href="#path1" /><circle r="2" class="data-particle"><animateMotion dur="12s" repeatCount="indefinite"><mpath href="#path1"/></animateMotion></circle></g>
-                <g class="line-svg line-2" opacity="0.45"><use href="#path2" /><circle r="3" class="data-particle"><animateMotion dur="18s" repeatCount="indefinite"><mpath href="#path2"/></animateMotion></circle></g>
-                <g class="line-svg line-3" opacity="0.25"><use href="#path3" /><circle r="2" class="data-particle"><animateMotion dur="15s" repeatCount="indefinite"><mpath href="#path3"/></animateMotion></circle></g>
-                <g class="line-svg line-4" opacity="0.40"><use href="#path4" /><circle r="3" class="data-particle"><animateMotion dur="20s" repeatCount="indefinite"><mpath href="#path4"/></animateMotion></circle></g>
-                <g class="line-svg line-5" opacity="0.35"><use href="#path5" /><circle r="2.5" class="data-particle"><animateMotion dur="10s" repeatCount="indefinite"><mpath href="#path5"/></animateMotion></circle></g>
-                <g class="line-svg line-6" opacity="0.30"><use href="#path6" /><circle r="2" class="data-particle"><animateMotion dur="16s" repeatCount="indefinite"><mpath href="#path6"/></animateMotion></circle></g>
-                <g class="line-svg line-7" opacity="0.45"><use href="#path7" /><circle r="3" class="data-particle"><animateMotion dur="14s" repeatCount="indefinite"><mpath href="#path7"/></animateMotion></circle></g>
-                <g class="line-svg line-8" opacity="0.25"><use href="#path8" /><circle r="2" class="data-particle"><animateMotion dur="19s" repeatCount="indefinite"><mpath href="#path8"/></animateMotion></circle></g>
-                <g class="line-svg line-9" opacity="0.40"><use href="#path9" /><circle r="2.5" class="data-particle"><animateMotion dur="11s" repeatCount="indefinite"><mpath href="#path9"/></animateMotion></circle></g>
-                <g class="line-svg line-10" opacity="0.35"><use href="#path10" /><circle r="3" class="data-particle"><animateMotion dur="17s" repeatCount="indefinite"><mpath href="#path10"/></animateMotion></circle></g>
-                <g class="line-svg line-11" opacity="0.30"><use href="#path11" /><circle r="2" class="data-particle"><animateMotion dur="13s" repeatCount="indefinite"><mpath href="#path11"/></animateMotion></circle></g>
-                <g class="line-svg line-12" opacity="0.45"><use href="#path12" /><circle r="3" class="data-particle"><animateMotion dur="15s" repeatCount="indefinite"><mpath href="#path12"/></animateMotion></circle></g>
-                <g class="line-svg line-13" opacity="0.25"><use href="#path13" /><circle r="2" class="data-particle"><animateMotion dur="21s" repeatCount="indefinite"><mpath href="#path13"/></animateMotion></circle></g>
-                <g class="line-svg line-14" opacity="0.40"><use href="#path14" /><circle r="2.5" class="data-particle"><animateMotion dur="16s" repeatCount="indefinite"><mpath href="#path14"/></animateMotion></circle></g>
-            </svg>
-        </div>
+        <canvas id="starfield" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;"></canvas>
+    </div>
     </div>
 
     <div class="dashboard-container">
@@ -79,9 +46,14 @@
                     <div class="stat-title">Total Slots</div>
                     <div class="stat-value" id="total-count">--</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-title">Occupancy %</div>
-                    <div class="stat-value" id="occupancy-percent">--%</div>
+                <div class="stat-card occupancy-card">
+                    <div class="stat-title">Parking Utilization</div>
+                    <div class="progress-wrapper">
+                        <div class="progress-container">
+                            <div class="progress-fill" id="occupancy-progress" style="width: 0%;"></div>
+                        </div>
+                        <div class="stat-value progress-text" id="occupancy-percent">--%</div>
+                    </div>
                 </div>
             </div>
 
@@ -248,5 +220,53 @@
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Starfield background
+        const canvasStarfield = document.getElementById('starfield');
+        if (canvasStarfield) {
+            const ctxStars = canvasStarfield.getContext('2d');
+            let w, h, spaceStars;
+
+            function initStars() {
+                w = canvasStarfield.width = window.innerWidth;
+                h = canvasStarfield.height = window.innerHeight;
+                spaceStars = [];
+                for (let i = 0; i < 250; i++) {
+                    spaceStars.push({
+                        x: Math.random() * w,
+                        y: Math.random() * h,
+                        radius: Math.random() * 1.5 + 0.5,
+                        opacity: Math.random(),
+                        speed: Math.random() * 0.2 + 0.05
+                    });
+                }
+            }
+
+            function drawStars() {
+                ctxStars.clearRect(0, 0, w, h);
+                for (let star of spaceStars) {
+                    ctxStars.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                    ctxStars.beginPath();
+                    ctxStars.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                    ctxStars.fill();
+                    
+                    star.y -= star.speed;
+                    if (star.y < 0) {
+                        star.y = h;
+                        star.x = Math.random() * w;
+                    }
+                    
+                    star.opacity += (Math.random() - 0.5) * 0.05;
+                    if (star.opacity < 0.1) star.opacity = 0.1;
+                    if (star.opacity > 1) star.opacity = 1;
+                }
+                requestAnimationFrame(drawStars);
+            }
+            
+            window.addEventListener('resize', initStars);
+            initStars();
+            drawStars();
+        }
+    </script>
 </body>
 </html>
